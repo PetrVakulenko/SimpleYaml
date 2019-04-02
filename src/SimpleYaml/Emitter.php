@@ -80,6 +80,8 @@ final class Emitter
         $lines = [];
 
         if (is_string($item)) {
+            $key = $this->prepareAliasKey($key);
+
             $lines[] = $keyInheritString . $key . ': ' . $item;
 
             return $lines;
@@ -108,5 +110,19 @@ final class Emitter
         }
 
         return $lines;
+    }
+
+    /**
+     * @param string $key
+     *
+     * @return string
+     */
+    private function prepareAliasKey(string $key): string
+    {
+        if ($this->yaml->aliasExists($key)) {
+            $key = '&' . $key;
+        }
+
+        return $key;
     }
 }
