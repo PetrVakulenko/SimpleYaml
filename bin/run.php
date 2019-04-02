@@ -1,9 +1,24 @@
 <?php
 
+/**
+ * =========================================
+ * =                EXAMPLE                =
+ * =========================================
+ */
+
 include_once __DIR__ . '/../src/autoloader.php';
 
-$yamlReader = new SimpleYaml\Reader();
+$parser = new SimpleYaml\Parser();
 
-$yamlReader->parseFile(__DIR__ . '/../tmp/test.yml');
+$parser->parseFile(__DIR__ . '/../tmp/test.yml');
 
-var_dump($yamlReader->getParsedData());
+$yaml = $parser->getYamlObject();
+
+var_dump($yaml->getDataWithAliases());
+var_dump($yaml->getAliases());
+var_dump($yaml->getDataWithoutAliases());
+
+$emitter = new SimpleYaml\Emitter($yaml);
+$toFile = $emitter->emit();
+var_dump($toFile);
+file_put_contents(__DIR__ . '/../tmp/testResult.yml', $toFile);

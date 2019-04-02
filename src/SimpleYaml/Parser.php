@@ -4,13 +4,8 @@ declare(strict_types=1);
 
 namespace SimpleYaml;
 
-final class Reader
+final class Parser
 {
-    /**
-     * @var string
-     */
-    private $filePath;
-
     /**
      * @var array
      */
@@ -22,14 +17,14 @@ final class Reader
     private $lineInherits = [];
 
     /**
-     * @var array
+     * @var Yaml
      */
-    private $aliases = [];
+    public $yaml;
 
-    /**
-     * @var array
-     */
-    private $data = [];
+    public function __construct()
+    {
+        $this->yaml = new Yaml();
+    }
 
     /**
      * @param string $filePath
@@ -40,44 +35,29 @@ final class Reader
 
         $rootLies = $this->getRootLines();
 
-        foreach($rootLies as $lineIndex) {
-            $this->data = array_merge(
-                $this->data,
+        foreach ($rootLies as $lineIndex) {
+            $this->yaml->dataWithAliases = array_merge(
+                $this->yaml->dataWithAliases,
                 $this->parseBlock($lineIndex)
             );
         }
 
-        foreach($rootLies as $lineIndex) {
-            $line = $this->prepareLine($this->lines[$lineIndex]);
-
-            if (strtolower($line) == 'aliases') {
-                $this->aliases = $this->parseBlock($lineIndex);
-
-                break;
-            }
-        }
+        $this->yaml->replaceAliases();
     }
 
     /**
-     * @return array
+     * @return Yaml
      */
-    public function getAliases(): array
+    public function getYamlObject(): Yaml
     {
-        return $this->aliases;
-    }
-
-    /**
-     * @return array
-     */
-    public function getParsedData(): array
-    {
-        return $this->data;
+        return $this->yaml;
     }
 
     /**
      * Recursive block parser.
      *
      * @param int $lineIndex
+     * @param bool $getAliasData
      *
      * @return array
      */
@@ -88,12 +68,20 @@ final class Reader
         $lineParts[0] = $this->prepareLine($lineParts[0]);
 
         if ($lineIndex == $this->getEndBlockLine($lineIndex)) {
+            $this->checkAliasData($lineParts[0], trim($lineParts[1]));
+
+            $lineParts[0] = $this->prepareAliasData($lineParts[0]);
+
             return [$lineParts[0] => trim($lineParts[1])];
         }
 
         $childLines = $this->getChildLines($lineIndex);
         if (!$this->childsHasDepth($childLines)) {
             if (count($childLines) == 1) {
+                $this->checkAliasData($lineParts[0], trim($this->lines[$childLines[0]]));
+
+                $lineParts[0] = $this->prepareAliasData($lineParts[0]);
+
                 return [$lineParts[0] => trim($this->lines[$childLines[0]])];
             }
 
@@ -114,6 +102,26 @@ final class Reader
         }
 
         return [$lineParts[0] => $result];
+    }
+
+    private function prepareAliasData(string $val): string
+    {
+        if (substr($val, 0, 1) === '&') {
+            return substr($val, 1);
+        }
+
+        return $val;
+    }
+
+    /**
+     * @param string $key
+     * @param string $val
+     */
+    private function checkAliasData(string $key, string $val): void
+    {
+        if (substr($key, 0, 1) === '&') {
+            $this->yaml->putAlias($key, $val);
+        }
     }
 
     /**
